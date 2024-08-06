@@ -102,5 +102,6 @@ def SoftmaxCrossEntropy_backward(grad_output, pred, ground_truth):
           this directly rather than rely on the backward functions of
           more primitive operations.
     """
-
-    return NotImplementedError
+    softmax = np.exp(pred) / np.sum(np.exp(pred), axis=1, keepdims=True)
+    a = (softmax - ground_truth) / pred.shape[0]
+    return a, None

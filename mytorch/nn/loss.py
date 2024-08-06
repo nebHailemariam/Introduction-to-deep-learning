@@ -87,5 +87,27 @@ class SoftmaxCrossEntropy(LossFN):
         # TODO: calculate loss value and set self.loss_val
         # To simplify things, add a single operation corresponding to the
         # backward function created for this loss
+        N = y.shape[0]  # TODO
+        C = y.shape[1]  # TODO
 
-        raise NotImplementedError
+        Ones_C = np.ones((C, 1))  # TODO
+        Ones_N = np.ones((N, 1))  # TODO
+
+        self.softmax = (np.exp(y_hat)) / np.sum(
+            np.exp(y_hat), axis=1, keepdims=True
+        )  # TODO
+
+        crossentropy = (-y * np.log(self.softmax)) @ Ones_C  # TODO
+        sum_crossentropy = Ones_N.T @ crossentropy  # TODO
+        L = (sum_crossentropy / N).reshape(
+            1,
+        )
+
+        self.autograd_engine.add_operation(
+            inputs=[y_hat, y],
+            output=L,
+            gradients_to_update=[None, None],
+            backward_operation=SoftmaxCrossEntropy_backward,
+        )
+
+        return L
