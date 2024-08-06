@@ -33,14 +33,20 @@ class Identity(Activation):
     This class is a gimme as it is already implemented for you as an example.
     Just complete the forward by returning self.state.
     """
+
     def __init__(self, autograd_engine):
         super(Identity, self).__init__(autograd_engine)
 
     def forward(self, x):
 
-        self.state = x
+        self.autograd_engine.add_operation(
+            inputs=[x],
+            output=x,
+            gradients_to_update=[None],
+            backward_operation=identity_backward,
+        )
 
-        raise NotImplementedError
+        return x
 
 
 class Sigmoid(Activation):
@@ -49,6 +55,7 @@ class Sigmoid(Activation):
     Feel free to enumerate primitive operations here (you may find it helpful).
     Feel free to refer back to your implementation from part 1 of the HW for equations.
     """
+
     def __init__(self, autograd_engine):
         super(Sigmoid, self).__init__(autograd_engine)
 
@@ -56,8 +63,41 @@ class Sigmoid(Activation):
 
         # TODO Compute forward with primitive operations
         # TODO Add operations to the autograd engine as you go
+        ones = -1.0 * np.ones(shape=x.shape)
+        neg = ones * x
+        self.autograd_engine.add_operation(
+            inputs=[ones, x],
+            output=neg,
+            gradients_to_update=[None, None],
+            backward_operation=mul_backward,
+        )
 
-        raise NotImplementedError
+        exp = np.exp(neg)
+        self.autograd_engine.add_operation(
+            inputs=[neg],
+            output=exp,
+            gradients_to_update=[None],
+            backward_operation=exp_backward,
+        )
+        ones = np.ones(shape=exp.shape)
+        sum = ones + exp
+
+        self.autograd_engine.add_operation(
+            inputs=[ones, exp],
+            output=sum,
+            gradients_to_update=[None, None],
+            backward_operation=add_backward,
+        )
+        ones = np.ones(shape=exp.shape)
+        div = ones / sum
+
+        self.autograd_engine.add_operation(
+            inputs=[ones, sum],
+            output=div,
+            gradients_to_update=[None, None],
+            backward_operation=div_backward,
+        )
+        return div
 
 
 class Tanh(Activation):
@@ -66,6 +106,7 @@ class Tanh(Activation):
     Feel free to enumerate primitive operations here (you may find it helpful).
     Feel free to refer back to your implementation from part 1 of the HW for equations.
     """
+
     def __init__(self, autograd_engine):
         super(Tanh, self).__init__(autograd_engine)
 
@@ -73,8 +114,14 @@ class Tanh(Activation):
 
         # TODO Compute forward with primitive operations
         # TODO Add operations to the autograd engine as you go
-        
-        raise NotImplementedError
+        a = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+        self.autograd_engine.add_operation(
+            inputs=[x],
+            output=a,
+            gradients_to_update=[None],
+            backward_operation=tanh_backward,
+        )
+        return np.tanh(x)
 
 
 class ReLU(Activation):
@@ -83,6 +130,7 @@ class ReLU(Activation):
     Feel free to enumerate primitive operations here (you may find it helpful).
     Feel free to refer back to your implementation from part 1 of the HW for equations.
     """
+
     def __init__(self, autograd_engine):
         super(ReLU, self).__init__(autograd_engine)
 
@@ -90,5 +138,12 @@ class ReLU(Activation):
 
         # TODO Compute forward with primitive operations
         # TODO Add operations to the autograd engine as you go
-        
-        raise NotImplementedError
+        max_x = np.maximum(x, 0)
+
+        self.autograd_engine.add_operation(
+            inputs=[x],
+            output=max_x,
+            gradients_to_update=[None],
+            backward_operation=max_backward,
+        )
+        return max_x

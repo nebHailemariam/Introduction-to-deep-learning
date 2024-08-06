@@ -12,14 +12,16 @@ Mathematical Functionalities
         in the first bonus.
 """
 
+
 def identity_backward(grad_output, a):
     """Backward for identity. Already implemented."""
 
     return grad_output
 
+
 def add_backward(grad_output, a, b):
     """Backward for addition. Already implemented."""
-    
+
     a_grad = grad_output * np.ones(a.shape)
     b_grad = grad_output * np.ones(b.shape)
 
@@ -28,50 +30,67 @@ def add_backward(grad_output, a, b):
 
 def sub_backward(grad_output, a, b):
     """Backward for subtraction"""
+    a_grad = grad_output * np.ones(a.shape)
+    b_grad = -grad_output * np.ones(b.shape)
 
-    return NotImplementedError
+    return a_grad, b_grad
 
 
 def matmul_backward(grad_output, a, b):
     """Backward for matrix multiplication"""
 
-    return NotImplementedError
+    a_grad = grad_output @ b.T
+    b_grad = a.T @ grad_output
+
+    return a_grad, b_grad
 
 
 def mul_backward(grad_output, a, b):
     """Backward for multiplication"""
 
-    return NotImplementedError
+    a_grad = grad_output * b
+    b_grad = grad_output * a
+
+    return a_grad, b_grad
 
 
 def div_backward(grad_output, a, b):
     """Backward for division"""
 
-    return NotImplementedError
+    a_grad = grad_output * (1 / b)
+    b_grad = -grad_output * (1 / np.square(b)) * a
+
+    return a_grad, b_grad
 
 
 def log_backward(grad_output, a):
     """Backward for log"""
 
-    return NotImplementedError
+    return grad_output / a
 
 
 def exp_backward(grad_output, a):
     """Backward of exponential"""
 
-    return NotImplementedError
+    return grad_output * np.exp(a)
 
 
 def max_backward(grad_output, a):
     """Backward of max"""
-
-    return NotImplementedError
+    a[a > 0] = 1
+    a[a < 0] = 0
+    return grad_output * a
 
 
 def sum_backward(grad_output, a):
     """Backward of sum"""
 
-    return NotImplementedError
+    return grad_output * np.ones(a.shape)
+
+
+def tanh_backward(grad_output, a):
+    """Backward of tanh"""
+    return grad_output * (1 - np.tanh(a) ** 2)
 
 
 def SoftmaxCrossEntropy_backward(grad_output, pred, ground_truth):
@@ -85,5 +104,3 @@ def SoftmaxCrossEntropy_backward(grad_output, pred, ground_truth):
     """
 
     return NotImplementedError
-
-

@@ -4,11 +4,13 @@ from mytorch.utils import GradientBuffer
 
 
 class Operation:
-    def __init__(self,
-                 inputs: List[np.ndarray],
-                 output: np.ndarray,
-                 gradients_to_update: List[Optional[Union[np.ndarray, None]]],
-                 backward_operation: Callable):
+    def __init__(
+        self,
+        inputs: List[np.ndarray],
+        output: np.ndarray,
+        gradients_to_update: List[Optional[Union[np.ndarray, None]]],
+        backward_operation: Callable,
+    ):
         """
         Args:
             - inputs: operation inputs (List[np.ndarray])
@@ -34,7 +36,7 @@ class Operation:
         """
         Use this with print(operation) to help debug.
         """
-        return (f"Operation [{self.i0_shp}, {self.i1_shp}, {self.output.shape}, {self.gradients_to_update}, {self.bwd_op_name}]")
+        return f"Operation [{self.i0_shp}, {self.i1_shp}, {self.output.shape}, {self.gradients_to_update}, {self.bwd_op_name}]"
 
 
 class Autograd:
@@ -60,11 +62,13 @@ class Autograd:
         del self.operation_list
         self.__class__._has_instance = False
 
-    def add_operation(self,
-                      inputs: List[np.ndarray],
-                      output: np.ndarray,
-                      gradients_to_update: List[Optional[Union[np.ndarray, None]]],
-                      backward_operation: Callable):
+    def add_operation(
+        self,
+        inputs: List[np.ndarray],
+        output: np.ndarray,
+        gradients_to_update: List[Optional[Union[np.ndarray, None]]],
+        backward_operation: Callable,
+    ):
         """
         Adds operation to operation list and puts gradients in gradient buffer for tracking
         Args:
@@ -90,6 +94,26 @@ class Autograd:
 
         # TODO: Add all of the inputs to the self.gradient_buffer using the add_spot() function
         # This will allow the gradients to be tracked
+
+        # autograd_engine.add_operation(
+        # inputs = [x, W], output = h,
+        # gradients_to_update = [None, dW],
+        # backward_operation = matmul_backward
+        # )
+        idx = 0
+        while idx < len(inputs):
+
+            self.gradient_buffer.add_spot(inputs[idx])
+            idx += 1
+
+        self.operation_list.append(
+            Operation(
+                inputs,
+                output,
+                gradients_to_update,
+                backward_operation,
+            )
+        )
 
         # TODO: Append an Operation object to the self.operation_list
 
@@ -120,6 +144,63 @@ class Autograd:
         #   self.gradient_buffer
         #   2) Inputs with externally tracked gradients: update gradients_to_update
         # NOTE: Make sure the order of gradients align with the order of inputs
+
+        # idx = len(self.operation_list) - 1
+
+        # while idx >= 0:
+        #     inputs = self.operation_list[idx].inputs
+        #     output = self.operation_list[idx].output
+        #     backward_operation = self.operation_list[idx].backward_operation
+        #     gradients = backward_operation(divergence, *inputs)
+
+        #     input_idx = 0
+
+        #     self.gradient_buffer.update_param(inputs, divergence)
+        #     divergence = self.gradient_buffer.get_param(input)
+        #     input_idx += 1
+
+        #     idx -= 1
+
+        idx = len(self.operation_list) - 1
+
+        while idx >= 0:
+            self.operation_list[idx]
+
+            if idx == len(self.operation_list) - 1:
+                loss = divergence
+            else:
+                loss = self.gradient_buffer.get_param(self.operation_list[idx].output)
+
+            input_idx = 0
+            from .functional_hw1 import sum_backward
+
+            if self.operation_list[idx].backward_operation == sum_backward:
+                print(*self.operation_list[idx].inputs)
+                print("self.operation_list[idx].backward_operation\n\n\n\n")
+
+            grad = self.operation_list[idx].backward_operation(
+                loss, *self.operation_list[idx].inputs
+            )
+
+            while input_idx < len(self.operation_list[idx].inputs):
+                input = self.operation_list[idx].inputs[input_idx]
+                if self.operation_list[idx].gradients_to_update[input_idx] is None:
+                    if type(grad) == int:
+                        self.gradient_buffer.update_param(input, grad)
+                    else:
+                        self.gradient_buffer.update_param(input, grad[input_idx])
+                else:
+                    if type(grad) == int:
+                        self.gradient_buffer.update_param(input, grad)
+                        self.operation_list[idx].gradients_to_update[input_idx] += grad
+                    else:
+                        self.gradient_buffer.update_param(input, grad[input_idx])
+                        self.operation_list[idx].gradients_to_update[input_idx] += grad[
+                            input_idx
+                        ]
+
+                input_idx += 1
+            idx -= 1
 
     def zero_grad(self):
         """
