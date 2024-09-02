@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, Union, List, Callable
-from mytorch.utils import GradientBuffer
+from .utils import GradientBuffer
 
 
 class Operation:
@@ -40,7 +40,7 @@ class Operation:
 
 
 class Autograd:
-    def __init__(self):
+    def __init__(self, debug=False):
         """
         WARNING: DO NOT MODIFY THIS METHOD!
         A check to make sure you don't create more than 1 Autograd at a time. You can remove
@@ -49,7 +49,7 @@ class Autograd:
         if getattr(self.__class__, "_has_instance", False):
             raise RuntimeError("Cannot create more than 1 Autograd instance")
         self.__class__._has_instance = True
-
+        self.debug = debug
         self.gradient_buffer = GradientBuffer()
         self.operation_list = []
 
@@ -94,8 +94,14 @@ class Autograd:
 
         # TODO: Add all of the inputs to the self.gradient_buffer using the add_spot() function
         # This will allow the gradients to be tracked
+        for inp, grad in zip(inputs, gradients_to_update):
+            if grad is None:
+                self.gradient_buffer.add_spot(inp)
 
         # TODO: Append an Operation object to the self.operation_list
+        self.operation_list.append(
+            Operation(inputs, output, gradients_to_update, backward_operation)
+        )
 
     def backward(self, divergence):
         """
@@ -114,16 +120,41 @@ class Autograd:
         # For the remaining iterations the gradient to be propagated can be retrieved from the
         # self.gradient_buffer.get_param.
 
-        # TODO: Execute the backward for the Operation
-        # NOTE: Make sure to unpack the inputs list if you aren't parsing a list in your backward.
+        for i, op in enumerate(reversed(self.operation_list)):
 
-        # TODO: Loop through the inputs and their corresponding gradients.
-        # Check with the Operation's gradients_to_update if you need to
-        # directly update a gradient, and do the following accordingly:
-        #   1) Inputs with internally tracked gradients: update the gradient stored in
-        #   self.gradient_buffer
-        #   2) Inputs with externally tracked gradients: update gradients_to_update
-        # NOTE: Make sure the order of gradients align with the order of inputs
+            if self.debug:
+                print(f"pre: {op}")
+
+            if i == 0:
+                grad_of_out = divergence
+            else:
+                grad_of_out = self.gradient_buffer.get_param(op.output)  # ***
+
+            # TODO: Execute the backward for the Operation
+            # NOTE: Make sure to unroll the inputs list if you aren't parsing a list in your backward.
+            # Hint: Lookup list argument unwrapping...
+            inp_grads = op.backward_operation(grad_of_out, *op.inputs)
+
+            # TODO: Loop through the inputs and their corresponding gradients.
+            # Check with the Operation's gradients_to_update if you need to
+            # directly update a gradient, and do the following accordingly:
+            #   1) Inputs with internally tracked gradients: update the gradient stored in
+            #   self.gradient_buffer
+            #   2) Inputs with externally tracked gradients: update gradients_to_update
+            # NOTE: Make sure the order of gradients align with the order of inputs
+
+            if len(op.inputs) == 1:
+                if op.gradients_to_update[0] is None:
+                    self.gradient_buffer.update_param(op.inputs[0], inp_grads)
+                else:
+                    op.gradients_to_update[i] += inp_grads
+
+            else:
+                for i, inp in enumerate(op.inputs):
+                    if op.gradients_to_update[i] is None:
+                        self.gradient_buffer.update_param(inp, inp_grads[i])
+                    else:
+                        op.gradients_to_update[i] += inp_grads[i]
 
     def zero_grad(self):
         """

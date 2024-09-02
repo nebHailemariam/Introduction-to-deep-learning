@@ -34,8 +34,16 @@ class RNNCell(object):
 
         # TODO: Init two Linear layers
         # NOTE: Make sure you pass the Autograd Engine
-        self.ih = NotImplemented
-        self.hh = NotImplemented
+        self.ih = Linear(
+            in_features=input_size,
+            out_features=hidden_size,
+            autograd_engine=autograd_engine,
+        )
+        self.hh = Linear(
+            in_features=hidden_size,
+            out_features=hidden_size,
+            autograd_engine=autograd_engine,
+        )
 
         """DO NOT MODIFY"""
         self.zero_grad()
@@ -73,28 +81,28 @@ class RNNCell(object):
         """
 
         """
-        ht = act_fn(Wih xt + bih + Whh ht−1 + bhh)
+        h_t = act_fn(Wih xt + bih + Whh ht−1 + bhh)
         """
 
         # TODO: Apply the Linear Transformation on the input features
-        input_transform = NotImplemented
+        input_transform = self.ih(x)
 
         # TODO: Apply the Linear Transformation on the hidden features
-        hidded_transform = NotImplemented
+        hidden_transform = self.hh(h_prev_t)
 
         # TODO: Multiply the hidden transformation with optional scale factor
         # NOTE: Remember to add any operations.
         # NOTE: Also remember np.ndarrays with the same views cannot be added to the gradient buffer.
         # NOTE: This is done to be able to later use RNNCell's to create GRUCells
         if scale_hidden is not None:
-            scale_hidden = NotImplemented
+            scale_hidden = hidden_transform * scale_hidden
         else:
-            scale_hidden = NotImplemented
+            scale_hidden = hidden_transform
 
         # TODO: Add the input Linear Transformation and the hidden Linear Transformation
-        total_transform = NotImplemented
+        total_transform = input_transform + hidden_transform
 
         # TODO: Apply the activation function
-        h_t = NotImplemented
+        h_t = self.activation(total_transform)
 
-        raise NotImplementedError
+        return h_t

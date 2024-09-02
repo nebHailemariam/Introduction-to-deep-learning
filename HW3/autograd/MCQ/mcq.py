@@ -1,18 +1,18 @@
 def question_1():
-    return NotImplemented
+    return "b"
 
 
 def question_2():
-    return NotImplemented
+    return "d"
 
 
 def question_3():
-    return NotImplemented
+    return "b"
 
 
 def question_4():
-    return NotImplemented
+    return "b"
 
 
 def question_5():
-    return NotImplemented
+    return "a"
