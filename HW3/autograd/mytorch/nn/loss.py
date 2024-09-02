@@ -7,7 +7,7 @@ from mytorch.functional import (
     div_backward,
     SoftmaxCrossEntropy_backward,
 )
-from mytorch.autograd_engine import *
+
 
 class LossFN(object):
     """
@@ -78,19 +78,6 @@ class SoftmaxCrossEntropy(LossFN):
     """
     :param A: Output of the model of shape (N, C)
     :param Y: Ground-truth values of shape (N, C)
-    * To be removed
-    self.A = A
-    self.Y = Y
-    self.N = A.shape[0]
-    self.C = A.shape[-1]
-
-    Ones_C = np.ones((self.C, 1))
-    Ones_N = np.ones((self.N, 1))
-
-    self.softmax = np.exp(self.A) / np.sum(np.exp(self.A), axis=1, keepdims=True)
-    crossentropy = (-1 * self.Y * np.log(self.softmax)) @ Ones_C
-    sum_crossentropy = Ones_N.T @ crossentropy
-    L = sum_crossentropy / self.N
     """
 
     def __init__(self, autograd_engine):
@@ -100,24 +87,27 @@ class SoftmaxCrossEntropy(LossFN):
         # TODO: calculate loss value and set self.loss_val
         # To simplify things, add a single operation corresponding to the
         # backward function created for this loss
+        N = y.shape[0]  # TODO
+        C = y.shape[1]  # TODO
 
-        # y     -> ground truth
-        # y_hat -> model output
+        Ones_C = np.ones((C, 1))  # TODO
+        Ones_N = np.ones((N, 1))  # TODO
 
-        N = y_hat.shape[0]
-        C = y_hat.shape[-1]
-        Ones_C = np.ones((C, 1))
-        Ones_N = np.ones((N, 1))
-        y_exp = np.exp(y_hat)
-        y_exp_sum =  np.sum(y_exp, keepdims=True)
-        softmax = y_exp / y_exp_sum
-        ce = (-1 * y * np.log(softmax)) @ Ones_C
-        sum_ce = Ones_N.T @ ce
-        self.loss_val = sum_ce / N
-        self.loss_val = self.loss_val.reshape(1,)
-        self.autograd_engine.add_operation(inputs=[y_hat, y],
-                                           output=self.loss_val,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=SoftmaxCrossEntropy_backward)
+        self.softmax = (np.exp(y_hat)) / np.sum(
+            np.exp(y_hat), axis=1, keepdims=True
+        )  # TODO
 
-        return self.loss_val
+        crossentropy = (-y * np.log(self.softmax)) @ Ones_C  # TODO
+        sum_crossentropy = Ones_N.T @ crossentropy  # TODO
+        L = (sum_crossentropy / N).reshape(
+            1,
+        )
+
+        self.autograd_engine.add_operation(
+            inputs=[y_hat, y],
+            output=L,
+            gradients_to_update=[None, None],
+            backward_operation=SoftmaxCrossEntropy_backward,
+        )
+
+        return L

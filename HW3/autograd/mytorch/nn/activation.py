@@ -40,9 +40,12 @@ class Identity(Activation):
     def forward(self, x):
 
         self.state = 1 * x
-        self.autograd_engine.add_operation(inputs=[np.ones_like(x), x], output=self.state,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=mul_backward)
+        self.autograd_engine.add_operation(
+            inputs=[np.ones_like(x), x],
+            output=self.state,
+            gradients_to_update=[None, None],
+            backward_operation=mul_backward,
+        )
 
         return self.state
 
@@ -62,24 +65,36 @@ class Sigmoid(Activation):
         # TODO Compute forward with primitive operations
         # TODO Add operations to the autograd engine as you go
         i1 = -1.0 * x
-        self.autograd_engine.add_operation(inputs=[-np.ones_like(x), x], output=i1,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=mul_backward)
+        self.autograd_engine.add_operation(
+            inputs=[-np.ones_like(x), x],
+            output=i1,
+            gradients_to_update=[None, None],
+            backward_operation=mul_backward,
+        )
 
         i2 = np.exp(i1)
-        self.autograd_engine.add_operation(inputs=[i1], output=i2,
-                                           gradients_to_update=[None],
-                                           backward_operation=exp_backward)
+        self.autograd_engine.add_operation(
+            inputs=[i1],
+            output=i2,
+            gradients_to_update=[None],
+            backward_operation=exp_backward,
+        )
 
         i3 = 1.0 + i2
-        self.autograd_engine.add_operation(inputs=[np.ones_like(i2), i2], output=i3,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=add_backward)
+        self.autograd_engine.add_operation(
+            inputs=[np.ones_like(i2), i2],
+            output=i3,
+            gradients_to_update=[None, None],
+            backward_operation=add_backward,
+        )
 
         self.state = 1.0 / i3
-        self.autograd_engine.add_operation(inputs=[np.ones_like(i3), i3], output=self.state,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=div_backward)
+        self.autograd_engine.add_operation(
+            inputs=[np.ones_like(i3), i3],
+            output=self.state,
+            gradients_to_update=[None, None],
+            backward_operation=div_backward,
+        )
 
         return self.state
 
@@ -100,9 +115,12 @@ class Tanh(Activation):
         # TODO Add operations to the autograd engine as you go
         # NOTE: Modification equivalent to HW3P1 modification
         self.state = np.tanh(x)
-        self.autograd_engine.add_operation(inputs=[x, self.state], output=self.state,
-                                           gradients_to_update=[None, None],
-                                           backward_operation=tanh_backward)
+        self.autograd_engine.add_operation(
+            inputs=[x, self.state],
+            output=self.state,
+            gradients_to_update=[None, None],
+            backward_operation=tanh_backward,
+        )
 
         return self.state
 
@@ -123,7 +141,10 @@ class ReLU(Activation):
         # TODO Add operations to the autograd engine as you go
         self.state = np.maximum(0, x)
 
-        self.autograd_engine.add_operation(inputs=[x], output=self.state,
-                                           gradients_to_update=[None],
-                                           backward_operation=max_backward)
+        self.autograd_engine.add_operation(
+            inputs=[x],
+            output=self.state,
+            gradients_to_update=[None],
+            backward_operation=max_backward,
+        )
         return self.state
