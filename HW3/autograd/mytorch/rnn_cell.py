@@ -95,26 +95,21 @@ class RNNCell(object):
         # NOTE: Remember to add any operations.
         # NOTE: Also remember np.ndarrays with the same views cannot be added to the gradient buffer.
         # NOTE: This is done to be able to later use RNNCell's to create GRUCells
-        ones = np.ones_like(hidden_transform)
-        if scale_hidden is not None:
-            scale = ones * scale_hidden
-            scale_hidden = hidden_transform * scale
-            self.autograd_engine.add_operation(
-                inputs=[hidden_transform, scale],
-                output=scale_hidden,
-                gradients_to_update=[None, None],
-                backward_operation=mul_backward,
-            )
-        else:
-            scale = ones
-            scale_hidden = hidden_transform * scale
 
-            self.autograd_engine.add_operation(
-                inputs=[hidden_transform, scale],
-                output=scale_hidden,
-                gradients_to_update=[None, None],
-                backward_operation=mul_backward,
-            )
+        if scale_hidden is not None:
+            scale = scale_hidden
+        else:
+            ones = np.ones_like(hidden_transform)
+            scale = ones
+
+        scale_hidden = hidden_transform * scale
+
+        self.autograd_engine.add_operation(
+            inputs=[hidden_transform, scale],
+            output=scale_hidden,
+            gradients_to_update=[None, None],
+            backward_operation=mul_backward,
+        )
 
         # TODO: Add the input Linear Transformation and the hidden Linear Transformation
         total_transform = input_transform + scale_hidden
