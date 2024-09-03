@@ -20,10 +20,10 @@ class CharacterPredictor(object):
         self.autograd_engine = autograd_engine
         super(CharacterPredictor, self).__init__()
         """The network consists of a GRU Cell and a linear layer."""
-        self.gru = NotImplemented  # TODO
-        self.projection = NotImplemented  # TODO
-        self.num_classes = NotImplemented  # TODO
-        self.hidden_dim = NotImplemented  # TODO
+        self.gru = GRUCell(input_dim, hidden_dim, autograd_engine)  # TODO
+        self.projection = Linear(hidden_dim, num_classes, autograd_engine)  # TODO
+        self.num_classes = num_classes  # TODO
+        self.hidden_dim = hidden_dim  # TODO
         self.projection.W = np.random.rand(num_classes, hidden_dim)
 
     def init_rnn_weights(
@@ -61,11 +61,11 @@ class CharacterPredictor(object):
             hidden state at current time-step.
 
         """
-        hnext = NotImplemented  # TODO
-        logits = NotImplemented  # TODO
+        hnext = self.gru(x, h)  # TODO
+        logits = self.projection(hnext)  # TODO
         # Uncomment after implementation
-        # return logits, hnext
-        raise NotImplementedError
+        return logits, hnext
+        # raise NotImplementedError
 
 
 def inference(net, inputs):
@@ -89,4 +89,12 @@ def inference(net, inputs):
 
     """
     # This code should not take more than 10 lines.
-    raise NotImplementedError
+
+    seq_len, _ = inputs.shape
+    store = []
+    hnext = np.zeros(net.hidden_dim)
+    for i in range(seq_len):
+        logits, hnext = net(inputs[i, :], hnext)
+        store.append(logits)
+
+    return np.array(store)
