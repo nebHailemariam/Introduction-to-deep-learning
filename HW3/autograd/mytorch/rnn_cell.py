@@ -86,6 +86,7 @@ class RNNCell(object):
 
         # TODO: Apply the Linear Transformation on the input features
         input_transform = self.ih(x)
+        # self.autograd_engine.add_operation(inputs=[])
 
         # TODO: Apply the Linear Transformation on the hidden features
         hidden_transform = self.hh(h_prev_t)
@@ -94,15 +95,36 @@ class RNNCell(object):
         # NOTE: Remember to add any operations.
         # NOTE: Also remember np.ndarrays with the same views cannot be added to the gradient buffer.
         # NOTE: This is done to be able to later use RNNCell's to create GRUCells
+        ones = np.ones_like(hidden_transform)
         if scale_hidden is not None:
-            scale_hidden = hidden_transform * scale_hidden
+            scale = ones * scale_hidden
+            scale_hidden = hidden_transform * scale
+            self.autograd_engine.add_operation(
+                inputs=[hidden_transform, scale],
+                output=scale_hidden,
+                gradients_to_update=[None, None],
+                backward_operation=mul_backward,
+            )
         else:
-            scale_hidden = hidden_transform
+            scale = ones
+            scale_hidden = hidden_transform * scale
+
+            self.autograd_engine.add_operation(
+                inputs=[hidden_transform, scale],
+                output=scale_hidden,
+                gradients_to_update=[None, None],
+                backward_operation=mul_backward,
+            )
 
         # TODO: Add the input Linear Transformation and the hidden Linear Transformation
-        total_transform = input_transform + hidden_transform
+        total_transform = input_transform + scale_hidden
+        self.autograd_engine.add_operation(
+            inputs=[input_transform, scale_hidden],
+            output=total_transform,
+            gradients_to_update=[None, None],
+            backward_operation=add_backward,
+        )
 
         # TODO: Apply the activation function
         h_t = self.activation(total_transform)
-
         return h_t
