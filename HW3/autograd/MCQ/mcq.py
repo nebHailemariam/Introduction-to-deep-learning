@@ -3,7 +3,7 @@ def question_1():
 
 
 def question_2():
-    return "d"
+    return "c"
 
 
 def question_3():
