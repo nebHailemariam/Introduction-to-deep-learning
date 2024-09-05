@@ -49,16 +49,19 @@ class CTC(object):
             extended_symbols.append(self.BLANK)
 
         N = len(extended_symbols)
+        skip_connect = np.zeros((N))
 
         # -------------------------------------------->
         # TODO
+        for idx in range(N - 1, 2, -1):
+            if extended_symbols[idx] != extended_symbols[idx - 2]:
+                skip_connect[idx] = 1
         # <---------------------------------------------
 
         extended_symbols = np.array(extended_symbols).reshape((N,))
         skip_connect = np.array(skip_connect).reshape((N,))
 
-        # return extended_symbols, skip_connect
-        raise NotImplementedError
+        return extended_symbols, skip_connect
 
     def get_forward_probs(self, logits, extended_symbols, skip_connect):
         """Compute forward probabilities.
@@ -90,12 +93,24 @@ class CTC(object):
         # -------------------------------------------->
         # TODO: Intialize alpha[0][0]
         # TODO: Intialize alpha[0][1]
+        alpha[0][0] = logits[0][extended_symbols[0]]
+        alpha[0][1] = logits[0][extended_symbols[1]]
         # TODO: Compute all values for alpha[t][sym] where 1 <= t < T and 1 <= sym < S (assuming zero-indexing)
         # IMP: Remember to check for skipConnect when calculating alpha
         # <---------------------------------------------
+        print("\n\n\n<---------------------------------------------")
+        print(extended_symbols)
+        for t in range(1, T):
+            for s in range(S):
+                alpha[t][s] = alpha[t - 1][s]
+                if s - 1 >= 0:
+                    alpha[t][s] += alpha[t - 1][s - 1]
+                if s - 2 >= 0 and skip_connect[s]:
+                    alpha[t][s] += alpha[t - 1][s - 2]
+                alpha[t][s] *= logits[t][extended_symbols[s]]
 
-        # return alpha
-        raise NotImplementedError
+        return alpha
+        # raise NotImplementedError
 
     def get_backward_probs(self, logits, extended_symbols, skip_connect):
         """Compute backward probabilities.
@@ -128,8 +143,26 @@ class CTC(object):
         # TODO
         # <--------------------------------------------
 
-        # return beta
-        raise NotImplementedError
+        beta[T - 1][S - 1] = 1
+        beta[T - 1][S - 2] = 1
+
+        for t in range(T - 2, -1, -1):
+            beta[t][S - 1] += (
+                beta[t + 1][S - 1] * logits[t + 1][extended_symbols[S - 1]]
+            )
+            for s in range(S - 2, -1, -1):
+                beta[t][s] += (
+                    beta[t + 1][s] * logits[t + 1][extended_symbols[s]]
+                    + beta[t + 1][s + 1] * logits[t + 1][extended_symbols[s + 1]]
+                )
+                if s + 2 < S and skip_connect[s + 2]:
+                    beta[t][s] += (
+                        beta[t + 1][s + 2] * logits[t + 1][extended_symbols[s + 2]]
+                    )
+
+        return beta
+
+        # raise NotImplementedError
 
     def get_posterior_probs(self, alpha, beta):
         """Compute posterior probabilities.
@@ -156,9 +189,12 @@ class CTC(object):
         # -------------------------------------------->
         # TODO
         # <---------------------------------------------
-
+        gamma = alpha * beta
+        sumgamma = np.sum(alpha * beta, axis=1).reshape(T, 1)
         # return gamma
-        raise NotImplementedError
+        gama = gamma / sumgamma
+
+        return gama
 
 
 class CTCLoss(object):
