@@ -52,8 +52,20 @@ class GreedySearchDecoder(object):
         # 4. Select most probable symbol and append to decoded_path
         # 5. Compress sequence (Inside or outside the loop)
 
-        # return decoded_path, path_prob
-        raise NotImplementedError
+        S = len(y_probs[1])
+        for s in range(S):
+            id = np.argmax(y_probs[:, s, :])
+            if id == blank:
+                path_prob *= y_probs[:, s, :][id]
+            else:
+                symbol = self.symbol_set[id - 1]
+                if decoded_path == [] or decoded_path[-1] != symbol:
+                    decoded_path.append(self.symbol_set[id - 1])
+                path_prob *= y_probs[:, s, :][id]
+
+        print(decoded_path)
+
+        return "".join(decoded_path), path_prob
 
 
 class BeamSearchDecoder(object):
