@@ -199,161 +199,42 @@ class CTC(object):
 
 class CTCLoss(object):
 
-    def __init__(self, autograd_engine, BLANK=0):
+    def __init__(self, BLANK=0):
         """
 
-        Initialize instance variables
+                Initialize instance variables
 
         Argument(s)
-        -----------
-        BLANK (int, optional): blank label index. Default 0.
+                -----------
+                BLANK (int, optional): blank label index. Default 0.
 
         """
         # -------------------------------------------->
         # No need to modify
         super(CTCLoss, self).__init__()
-        self.autograd_engine = autograd_engine
 
         self.BLANK = BLANK
+        self.gammas = []
         self.ctc = CTC()
 
-        # NOTE: Toggle using ctc_loss_backward version
-        # or a version using more primitive operations
-        self.USE_PRIMITIVE = True
-        # <---------------------------------------------
+    # <---------------------------------------------
 
     def __call__(self, logits, target, input_lengths, target_lengths):
+
         # No need to modify
         return self.forward(logits, target, input_lengths, target_lengths)
-
-    # def forward(self, logits, target, input_lengths, target_lengths):
-    #     """CTC loss forward
-
-    #     Computes the CTC Loss by calculating forward, backward, and
-    #     posterior proabilites, and then calculating the avg. loss between
-    #     targets and predicted log probabilities
-
-    #     Input
-    #     -----
-    #     logits [np.array, dim=(seq_length, batch_size, len(symbols)]:
-    #         log probabilities (output sequence) from the RNN/GRU
-
-    #     target [np.array, dim=(batch_size, padded_target_len)]:
-    #         target sequences
-
-    #     input_lengths [np.array, dim=(batch_size,)]:
-    #         lengths of the inputs
-
-    #     target_lengths [np.array, dim=(batch_size,)]:
-    #         lengths of the target
-
-    #     Returns
-    #     -------
-    #     loss [float]:
-    #         avg. divergence between the posterior probability and the target
-
-    #     """
-
-    #     # No need to modify
-    #     self.logits = logits
-    #     self.target = target
-    #     self.input_lengths = input_lengths
-    #     self.target_lengths = target_lengths
-
-    #     # IMP:
-    #     # Output losses should be the mean loss over the batch
-    #     # Dont track div operation to match test values!
-
-    #     # No need to modify
-    #     B, _ = target.shape
-    #     self.gammas = np.empty(B, dtype=object)
-    #     self.extended_symbols = np.empty(B, dtype=object)
-
-    #     # NOTE: Arrays with the same views cannot be added to the gradient buffer
-    #     # So, in-place operations are not allowed.
-    #     # Each loss update must be accounted for as a seperate np.array
-    #     # to ensure that there is are no breaks in the computation graph
-    #     # during gradient backpropagation.
-    #     # We will initialize loss as a dict of key'd by batch_size,
-    #     # where each value will be a variable length list of (seq_len + 1) x singleton np.ndarray's
-    #     tmp_loss = {k: [np.array([0.0], dtype=np.float64)] for k in range(B)}
-
-    #     for batch_itr in range(B):
-    #         # -------------------------------------------->
-    #         # Computing CTC Loss for single batch
-    #         # Process:
-    #         #     Truncate the target to target length
-    #         #     Truncate the logits to input length
-    #         #     Extend target sequence with blank
-    #         #     Compute forward probabilities
-    #         #     Compute backward probabilities
-    #         #     Compute posteriors using total probability function
-    #         #     Compute expected divergence for each batch and store it in totalLoss
-    #         #     Take an average over all batches and return final result
-    #         # <---------------------------------------------
-    #         item = self.target[batch_itr][: self.input_lengths[batch_itr]]
-    #         target_logits = self.logits[: input_lengths[batch_itr], batch_itr]
-    #         extended_symbols, skip_connect = self.ctc.extend_target_with_blank(item)
-    #         alpha = self.ctc.get_forward_probs(
-    #             target_logits, extended_symbols, skip_connect
-    #         )
-    #         beta = self.ctc.get_backward_probs(
-    #             target_logits, extended_symbols, skip_connect
-    #         )
-    #         gama = self.ctc.get_posterior_probs(alpha, beta)
-
-    #         S, T = len(extended_symbols), len(target_logits)
-    #         dy = np.zeros((T, S))
-    #         print("<--------------------------------------------->")
-    #         print(gama.shape, dy.shape, target_logits.shape)
-
-    #         for t in range(T):
-    #             for s in range(S):
-    #                 # Since we're using negative log likelihood we multiply the negative of the logits
-    #                 dy[t][extended_symbols[s]] -= gama[t][s] * -np.log(
-    #                     target_logits[t][extended_symbols[s]]
-    #                 )
-    #         # -------------------------------------------->
-    #         # TODO
-    #         # NOTE: Remember to add the Slice operation as you index into things.
-    #         # See slice_backward in functional.py and learn about the np.index_exp object
-    #         # which you will use to pass index expressions to the backward function
-    #         # Remember to wrap the np.index_exp object in a np.array(..., dtype=object)
-    #         # <---------------------------------------------
-    #         # pass
-
-    #     """ DO NOT MODIFY """
-    #     # NOTE: tmp_loss[b][-1] should contain the most recently updated
-    #     # loss value for batch b.
-    #     # We will iterate over all batches and update each element of total_loss
-    #     # as a sum of tmp_loss[b][-1] and the previous total_loss elem.
-    #     # This is equivalent to doing np.sum() but preserves the integrity
-    #     # of the computational graph
-    #     total_loss = [np.array([0.0], dtype=np.float64) for _ in range(B + 1)]
-    #     for i in range(B):
-    #         total_loss[i + 1] = total_loss[i] + tmp_loss[i][-1]
-    #         self.autograd_engine.add_operation(
-    #             inputs=[total_loss[i], tmp_loss[i][-1]],
-    #             output=total_loss[i + 1],
-    #             gradients_to_update=[None, None],
-    #             backward_operation=add_backward,
-    #         )
-
-    #     # NOTE: Dont add div operation to match test values
-    #     t_loss = total_loss[-1] / B
-    #     return t_loss
 
     def forward(self, logits, target, input_lengths, target_lengths):
         """CTC loss forward
 
-        Computes the CTC Loss by calculating forward, backward, and
-        posterior proabilites, and then calculating the avg. loss between
-        targets and predicted log probabilities
+                Computes the CTC Loss by calculating forward, backward, and
+                posterior proabilites, and then calculating the avg. loss between
+                targets and predicted log probabilities
 
         Input
         -----
         logits [np.array, dim=(seq_length, batch_size, len(symbols)]:
-            log probabilities (output sequence) from the RNN/GRU
+                        log probabilities (output sequence) from the RNN/GRU
 
         target [np.array, dim=(batch_size, padded_target_len)]:
             target sequences
@@ -377,16 +258,14 @@ class CTCLoss(object):
         self.input_lengths = input_lengths
         self.target_lengths = target_lengths
 
-        # IMP:
-        # Output losses should be the mean loss over the batch
+        #####  IMP:
+        #####  Output losses should be the mean loss over the batch
 
         # No need to modify
         B, _ = target.shape
-        # NOTE: Since, arrays with the same views cannot be added to the gradient buffer
-        # updating loss must be kept track of in this manner
-        tmp_loss = {k: [np.array([0.0], dtype=np.float64)] for k in range(B)}
-        self.gammas = np.empty(B, dtype=object)
-        self.extended_symbols = np.empty(B, dtype=object)
+        total_loss = np.zeros(B)
+        self.extended_symbols = []
+
         for batch_itr in range(B):
             # -------------------------------------------->
             # Computing CTC Loss for single batch
@@ -404,79 +283,60 @@ class CTCLoss(object):
             # -------------------------------------------->
             # TODO
             # <---------------------------------------------
-            target_t = target[batch_itr, : target_lengths[batch_itr]]
-            logits_t = self.logits[: input_lengths[batch_itr], batch_itr]
-            extended_symbols, skip_connect = self.ctc.extend_target_with_blank(target_t)
-            alpha = self.ctc.get_forward_probs(logits_t, extended_symbols, skip_connect)
-            beta = self.ctc.get_backward_probs(logits_t, extended_symbols, skip_connect)
-            gamma = self.ctc.get_posterior_probs(alpha, beta)
+            pass
 
-            for r in range(gamma.shape[1]):
+        total_loss = np.sum(total_loss) / B
 
-                tmp_loss[batch_itr].append(np.array([0.0], dtype=np.float64))
+        # return total_loss
+        raise NotImplementedError
 
-                idx1 = np.index_exp[
-                    : input_lengths[batch_itr], batch_itr, extended_symbols[r]
-                ]
-                logits_r = self.logits[idx1].copy()
-                self.autograd_engine.add_operation(
-                    inputs=[self.logits, np.array(idx1, dtype=object)],
-                    output=logits_r,
-                    gradients_to_update=[None, None],
-                    backward_operation=slice_backward,
-                )
+    def backward(self):
+        """
 
-                i1 = np.log(logits_r)
-                self.autograd_engine.add_operation(
-                    inputs=[logits_r],
-                    output=i1,
-                    gradients_to_update=[None],
-                    backward_operation=log_backward,
-                )
+                CTC loss backard
 
-                gamma_r = gamma[:, r].copy()
-                i2 = i1 * gamma_r
-                self.autograd_engine.add_operation(
-                    inputs=[i1, gamma_r],
-                    output=i2,
-                    gradients_to_update=[None, None],
-                    backward_operation=mul_backward,
-                )
+        Calculate the gradients w.r.t the parameters and return the derivative
+                w.r.t the inputs, xt and ht, to the cell.
 
-                i3 = np.sum(i2, keepdims=True)
-                self.autograd_engine.add_operation(
-                    inputs=[i2],
-                    output=i3,
-                    gradients_to_update=[None],
-                    backward_operation=sum_backward,
-                )
+        Input
+        -----
+        logits [np.array, dim=(seqlength, batch_size, len(Symbols)]:
+                        log probabilities (output sequence) from the RNN/GRU
 
-                tmp_loss[batch_itr][-1] = tmp_loss[batch_itr][-2] - i3
-                self.autograd_engine.add_operation(
-                    inputs=[tmp_loss[batch_itr][-2], i3],
-                    output=tmp_loss[batch_itr][-1],
-                    gradients_to_update=[None, None],
-                    backward_operation=sub_backward,
-                )
+        target [np.array, dim=(batch_size, padded_target_len)]:
+            target sequences
 
-            assert len(tmp_loss[batch_itr]) == gamma.shape[1] + 1
+        input_lengths [np.array, dim=(batch_size,)]:
+            lengths of the inputs
 
-            self.gammas[batch_itr] = gamma
-            self.extended_symbols[batch_itr] = extended_symbols
+        target_lengths [np.array, dim=(batch_size,)]:
+            lengths of the target
 
-        # NOTE: Again, since arrays with the same views cannot be added to the gradient buffer
-        # summing the loss must be done in this manner to that the operations wrt to each
-        # element can be tracked for gradient backprop
-        total_loss = [np.array([0.0], dtype=np.float64) for _ in range(B + 1)]
-        for i in range(B):
-            total_loss[i + 1] = total_loss[i] + tmp_loss[i][-1]
-            self.autograd_engine.add_operation(
-                inputs=[total_loss[i], tmp_loss[i][-1]],
-                output=total_loss[i + 1],
-                gradients_to_update=[None, None],
-                backward_operation=add_backward,
-            )
+        Returns
+        -------
+        dY [np.array, dim=(seq_length, batch_size, len(extended_symbols))]:
+            derivative of divergence w.r.t the input symbols at each time
 
-        # NOTE: Dont add div operation to match test values
-        i4 = total_loss[-1] / B
-        return i4
+        """
+
+        # No need to modify
+        T, B, C = self.logits.shape
+        dY = np.full_like(self.logits, 0)
+
+        for batch_itr in range(B):
+            # -------------------------------------------->
+            # Computing CTC Derivative for single batch
+            # Process:
+            #     Truncate the target to target length
+            #     Truncate the logits to input length
+            #     Extend target sequence with blank
+            #     Compute derivative of divergence and store them in dY
+            # <---------------------------------------------
+
+            # -------------------------------------------->
+            # TODO
+            # <---------------------------------------------
+            pass
+
+        # return dY
+        raise NotImplementedError
