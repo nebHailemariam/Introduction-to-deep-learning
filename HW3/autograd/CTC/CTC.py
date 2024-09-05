@@ -98,8 +98,6 @@ class CTC(object):
         # TODO: Compute all values for alpha[t][sym] where 1 <= t < T and 1 <= sym < S (assuming zero-indexing)
         # IMP: Remember to check for skipConnect when calculating alpha
         # <---------------------------------------------
-        print("\n\n\n<---------------------------------------------")
-        print(extended_symbols)
         for t in range(1, T):
             for s in range(S):
                 alpha[t][s] = alpha[t - 1][s]
@@ -294,9 +292,6 @@ class CTCLoss(object):
             gamma = self.ctc.get_posterior_probs(alpha, beta)
             S, T = len(self.extended_symbols), len(logits)
 
-            print("<--------------------------------------------->")
-            # print(gama.shape, dy.shape, target_logits.shape)
-
             for t in range(T):
                 for s in range(S):
                     # Since we're using negative log likelihood we multiply the negative of the logits
@@ -353,11 +348,29 @@ class CTCLoss(object):
             #     Extend target sequence with blank
             #     Compute derivative of divergence and store them in dY
             # <---------------------------------------------
+            target = self.target[batch_itr][: self.target_lengths[batch_itr]]
+            logits = self.logits[: self.input_lengths[batch_itr], batch_itr]
+            self.extended_symbols, skip_connect = self.ctc.extend_target_with_blank(
+                target=target
+            )
+            alpha = self.ctc.get_forward_probs(
+                logits, self.extended_symbols, skip_connect
+            )
+            beta = self.ctc.get_backward_probs(
+                logits, self.extended_symbols, skip_connect
+            )
+            gamma = self.ctc.get_posterior_probs(alpha, beta)
+            S, T = len(self.extended_symbols), len(logits)
+
+            for t in range(T):
+                for s in range(S):
+                    dY[t][batch_itr][self.extended_symbols[s]] -= (
+                        gamma[t][s] / logits[t][self.extended_symbols[s]]
+                    )
 
             # -------------------------------------------->
             # TODO
             # <---------------------------------------------
-            pass
 
-        # return dY
-        raise NotImplementedError
+        return dY
+        # raise NotImplementedError
