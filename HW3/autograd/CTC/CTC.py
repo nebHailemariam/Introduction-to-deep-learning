@@ -280,15 +280,36 @@ class CTCLoss(object):
             #     Take an average over all batches and return final result
             # <---------------------------------------------
 
+            target = self.target[batch_itr][: self.target_lengths[batch_itr]]
+            logits = self.logits[: input_lengths[batch_itr], batch_itr]
+            self.extended_symbols, skip_connect = self.ctc.extend_target_with_blank(
+                target=target
+            )
+            alpha = self.ctc.get_forward_probs(
+                logits, self.extended_symbols, skip_connect
+            )
+            beta = self.ctc.get_backward_probs(
+                logits, self.extended_symbols, skip_connect
+            )
+            gamma = self.ctc.get_posterior_probs(alpha, beta)
+            S, T = len(self.extended_symbols), len(logits)
+
+            print("<--------------------------------------------->")
+            # print(gama.shape, dy.shape, target_logits.shape)
+
+            for t in range(T):
+                for s in range(S):
+                    # Since we're using negative log likelihood we multiply the negative of the logits
+                    total_loss[batch_itr] -= gamma[t][s] * np.log(
+                        logits[t][self.extended_symbols[s]]
+                    )
             # -------------------------------------------->
             # TODO
             # <---------------------------------------------
-            pass
 
         total_loss = np.sum(total_loss) / B
 
-        # return total_loss
-        raise NotImplementedError
+        return total_loss
 
     def backward(self):
         """
