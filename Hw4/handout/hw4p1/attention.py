@@ -142,25 +142,36 @@ class Attention:
         """
 
         # Derivatives wrt attention weights (raw and normalized)
-
-        dLdA_sig       = # TODO
-        dLdA_w         = # TODO
+        dLdA_sig = torch.matmul(dLdXnew, self.V.transpose(1, 2))  # TODO
+        dLdA_w = torch.mul(
+            (1 / torch.sqrt(torch.tensor(self.D_K))),
+            self.softmax.backward(dLdA_sig),
+        )  # TODO
 
         # Derivatives wrt keys, queries, and value
 
-        self.dLdV      = # TODO
-        self.dLdK      = # TODO
-        self.dLdQ      = # TODO
+        self.dLdV = torch.matmul(self.A_sig.transpose(1, 2), dLdXnew)  # TODO
+        self.dLdK = torch.matmul(dLdA_w.transpose(1, 2), self.Q)  # TODO
+        self.dLdQ = torch.matmul(dLdA_w, self.K)  # TODO
 
         # Dervatives wrt weight matrices
         # Remember that you need to sum the derivatives along the batch dimension.
 
-        self.dLdWq     = # TODO
-        self.dLdWv     = # TODO
-        self.dLdWk     = # TODO
+        self.dLdWq = torch.sum(
+            torch.matmul(self.X.transpose(1, 2), self.dLdQ), dim=0
+        )  # TODO
+        self.dLdWv = torch.sum(
+            torch.matmul(self.X.transpose(1, 2), self.dLdV), dim=0
+        )  # TODO
+        self.dLdWk = torch.sum(
+            torch.matmul(self.X.transpose(1, 2), self.dLdK), dim=0
+        )  # TODO
 
         # Derivative wrt input
-
-        dLdX      = # TODO
+        dLdX = (
+            torch.matmul(self.dLdV, self.W_v.transpose(0, 1))
+            + torch.matmul(self.dLdK, self.W_k.transpose(0, 1))
+            + torch.matmul(self.dLdQ, self.W_q.transpose(0, 1))
+        )  # TODO
 
         return dLdX
