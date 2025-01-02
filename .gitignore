@@ -42,3 +42,7 @@ env2/
 # Pytest
 .cache
 nosetests
+
+/HW2/HW2P2/data/
+*wandb
+*.DS_Store

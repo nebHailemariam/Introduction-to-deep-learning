@@ -267,12 +267,9 @@ class ResnetDecoder(nn.Module):
 
     def __init__(self, in_features, n_classes):
         super().__init__()
-        self.avg = nn.AdaptiveAvgPool2d((1, 1))
         self.decoder = nn.Linear(in_features, n_classes)
 
     def forward(self, x):
-        x = self.avg(x)
-        x = x.view(x.size(0), -1)
         x = self.decoder(x)
         return x
 
@@ -281,15 +278,19 @@ class ResNet(nn.Module):
 
     def __init__(self, in_channels, n_classes, *args, **kwargs):
         super().__init__()
-        self.encoder = ResNetEncoder(in_channels, *args, **kwargs)
+        self.encoder = nn.Sequential(
+            ResNetEncoder(in_channels, *args, **kwargs),
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+        )
         self.decoder = ResnetDecoder(
-            self.encoder.blocks[-1].blocks[-1].expanded_channels, n_classes
+            self.encoder[0].blocks[-1].blocks[-1].expanded_channels, n_classes
         )
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+        feats = self.encoder(x)
+        out = self.decoder(feats)
+        return {"feats": feats, "out": out}
 
 
 def resnet18(in_channels, n_classes):
@@ -318,7 +319,7 @@ def resnet152(in_channels, n_classes):
     )
 
 
-# from torchsummary import summary
+from torchsummary import summary
 
-# model = resnet101(3, 1000)
-# summary(model.to("mps"), (3, 224, 224))
+model = resnet101(3, 1000)
+summary(model.to("mps"), (3, 224, 224))
