@@ -124,9 +124,7 @@ async def hello(ctx):
 def start_bot():
     try:
         # Replace with your bot's token
-        bot.run(
-            "MTMyOTc2OTc0ODQ4NDk4NDg0Mw.GI5BSn.YeQTkk0qtJ6Y__KXSBD5AHI8Ym1KDeL4TickvQ"
-        )
+        bot.run("Token")
     except Exception as e:
         logger.error(f"Bot failed: {e}")
         sys.exit(1)  # Exit to restart
