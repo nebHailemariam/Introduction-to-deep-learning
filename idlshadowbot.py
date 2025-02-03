@@ -1,14 +1,11 @@
 import discord
 from discord.ext import commands, tasks
 import datetime
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from socketserver import ThreadingMixIn
+import pytz
 import logging
-import sys
-import asyncio  # Ensure you import asyncio
+import asyncio
 
-# Set up logging for better debugging and monitoring
+# Set up logging for debugging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,6 +14,9 @@ intents = discord.Intents.default()
 intents.messages = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Timezone for Pittsburgh (EST)
+est_tz = pytz.timezone("America/New_York")
 
 ta_responsibilities = {
     "Kateryna Shapovalenko": [
@@ -30,7 +30,12 @@ ta_responsibilities = {
     ],
     "Miya Sylvester": [
         1045426392248094780,
-        ["Mon, Feb 3", "Wed, Feb 5", "Mon, Apr 21", "Wed, Apr 23"],
+        [
+            "Mon, Apr 21",
+            "Wed, Apr 23",
+            "Mon, Mar 31",
+            "Wed, Apr 9",
+        ],
     ],
     "Alexander Moker": [
         225488327036370944,
@@ -91,12 +96,12 @@ ta_responsibilities = {
     "Tanghang Elvis Tata": [
         1311026963040960563,
         [
-            "Mon, Jan 27",
-            "Wed, Jan 29",
-            "Wed, Feb 24",
-            "Mon, Mar 24",
-            "Mon, Apr 21",
-            "Wed, Apr 23",
+            # "Mon, Jan 27",
+            # "Wed, Jan 29",
+            # "Wed, Feb 24",
+            # "Mon, Mar 24",
+            # "Mon, Apr 21",
+            # "Wed, Apr 23",
         ],
     ],
     "John Liu": [
@@ -117,109 +122,104 @@ ta_responsibilities = {
     ],
     "Peter Wauyo": [
         1247696351425466498,
-        ["Wed, Feb 26", "Mon, Mar 17", "Mon, Mar 31", "Wed, Apr 9"],
+        [
+            "Wed, Feb 26",
+            "Mon, Mar 17",
+            "Mon, Feb 03",
+            "Wed, Feb 5",
+        ],
     ],
 }
 
-import pytz
-
-# EST timezone using pytz
-est_tz = pytz.timezone("US/Eastern")
-
 
 def get_est_now():
-    """Get the current time in EST."""
+    """Get the current time in Pittsburgh (EST)."""
     return datetime.datetime.now(est_tz)
 
 
-def is_responsible_for_day(date_str, target_date):
-    """Check if a TA is responsible for a specific date."""
-    date_str_with_year = date_str + ", 2025"  # Add year to the date string
-    date_obj = datetime.datetime.strptime(date_str_with_year, "%a, %b %d, %Y")
-    return date_obj.date() == target_date  # Compare exact dates
+def get_next_run_time():
+    """Get the next scheduled time at 10 AM EST."""
+    now = get_est_now()
+    next_run = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    if now >= next_run:  # If it's past 10 AM today, schedule for tomorrow
+        next_run += datetime.timedelta(days=1)
+    return next_run
 
 
-def is_responsible_for_week(date_str, start_date, end_date):
-    """Check if a TA has responsibilities within a given week."""
-    date_str_with_year = date_str + ", 2025"
-    date_obj = datetime.datetime.strptime(date_str_with_year, "%a, %b %d, %Y")
-    return start_date <= date_obj.date() <= end_date
+def get_seconds_until_next_run():
+    """Get seconds until the next scheduled 10 AM EST run."""
+    now = get_est_now()
+    next_run = get_next_run_time()
+    return (next_run - now).total_seconds()
+
+
+def normalize_date(date_str):
+    """Normalize dates to handle both 'Feb 3' and 'Feb 03' cases."""
+    try:
+        return datetime.datetime.strptime(
+            date_str + ", 2025", "%a, %b %d, %Y"
+        ).strftime("%a, %b %-d")
+    except ValueError:
+        return datetime.datetime.strptime(
+            date_str + ", 2025", "%a, %b %d, %Y"
+        ).strftime("%a, %b %-d")
 
 
 @tasks.loop(hours=24)
 async def send_reminder():
-    """Daily reminder task to notify TAs."""
+    """Send daily reminders at 10 AM EST."""
+    await bot.wait_until_ready()
     current_time = get_est_now()
     current_day = current_time.weekday()  # 0 = Monday, 6 = Sunday
     current_date = current_time.date()
-    next_day = current_date + datetime.timedelta(days=1)  # Calculate next day's date
-    next_day_str = next_day.strftime("%a, %b %d")  # Format next day's date as string
+    next_day = current_date + datetime.timedelta(days=1)
+    next_day_str = next_day.strftime("%a, %b %-d")
     channel = bot.get_channel(1306667280364732468)  # Replace with actual channel ID
 
     if channel is None:
         logger.error("Channel not found!")
         return
 
-    if current_day == 5:  # Saturday
-        # Notify about all responsibilities for the upcoming week
-        start_of_week = current_date
-        end_of_week = start_of_week + datetime.timedelta(days=4)  # Friday
-        responsible_users = {}
+    responsible_users = []
 
-        for user, info in ta_responsibilities.items():
-            user_id, days = info
-            for responsibility_date in days:
-                if is_responsible_for_week(
-                    responsibility_date, start_of_week, end_of_week
-                ):
-                    if user_id not in responsible_users:
-                        responsible_users[user_id] = []
-                    responsible_users[user_id].append(responsibility_date)
+    for user, info in ta_responsibilities.items():
+        user_id, days = info
+        for responsibility_date in days:
+            if normalize_date(responsibility_date) == next_day_str:
+                responsible_users.append(f"<@{user_id}>")
 
-        if responsible_users:
-            reminder_message = "Reminder: TAs with responsibilities next week:\n"
-            for user_id, dates in responsible_users.items():
-                formatted_dates = ", ".join(dates)
-                reminder_message += f"<@{user_id}>: {formatted_dates}\n"
-            await channel.send(reminder_message)
-        else:
-            await channel.send("No responsibilities assigned for next week.")
-
+    if responsible_users:
+        reminder_message = (
+            "Reminder: "
+            + " ".join(responsible_users)
+            + ", you have a Shadow responsibility tomorrow!"
+        )
+        await channel.send(reminder_message)
     else:
-        # Notify about responsibilities for the next day
-        responsible_users = []
-
-        for user, info in ta_responsibilities.items():
-            user_id, days = info
-            for responsibility_date in days:
-                if responsibility_date == next_day_str:
-                    responsible_users.append(f"<@{user_id}>")
-
-        if responsible_users:
-            reminder_message = (
-                "Reminder: "
-                + " ".join(responsible_users)
-                + ", you have a Shadow responsibility tomorrow!"
-            )
-            await channel.send(reminder_message)
-        else:
-            await channel.send(f"No responsibilities tomorrow ({next_day_str}).")
+        await channel.send(f"No responsibilities tomorrow ({next_day_str}).")
 
 
-# Bot startup event
 @bot.event
 async def on_ready():
-    try:
-        logger.info(f"Logged in as {bot.user}.")
-        send_reminder.start()  # Start the reminder loop
-    except Exception as e:
-        logger.error(f"Error during on_ready: {e}")
+    """Run the bot and send an initial reminder immediately."""
+    logger.info(f"Logged in as {bot.user}.")
+
+    # Send an immediate notification
+    channel = bot.get_channel(1290436547094777939)
+    if channel:
+        await channel.send("Bot is online! Sending an initial reminder...")
+        await send_reminder()
+
+    # Schedule task to run at 10 AM EST
+    seconds_until_next_run = get_seconds_until_next_run()
+    logger.info(f"Next reminder scheduled in {seconds_until_next_run} seconds.")
+    await asyncio.sleep(seconds_until_next_run)  # Wait until 10 AM EST
+    send_reminder.start()
 
 
-# Replace with your bot token
 def start_bot():
     try:
-        bot.run("TOKEN")  # Replace with your bot token
+        bot.run("Token")  # Replace with actual bot token
     except Exception as e:
         logger.error(f"Bot failed: {e}")
 
